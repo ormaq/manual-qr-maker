@@ -1,0 +1,2 @@
+# manual-qr-maker
+ 
