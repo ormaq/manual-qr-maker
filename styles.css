@@ -1,0 +1,263 @@
+/* General Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    background-color: #f4f6f8;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    color: #333;
+}
+
+/* Container Layout */
+.container {
+    display: flex;
+    flex: 1;
+    width: 100%;
+}
+
+/* Panel Styles */
+.left-panel, .right-panel {
+    width: 20%;
+    padding: 20px;
+    background-color: #ffffff;
+    overflow-y: auto;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.3s ease;
+}
+
+.left-panel:hover, .right-panel:hover {
+    box-shadow: 2px 0 15px rgba(0, 0, 0, 0.2);
+}
+
+.center-panel {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f0f3f7;
+}
+
+/* Typography */
+h2 {
+    margin-top: 0;
+    color: #222;
+    font-size: 1.4em;
+}
+
+label {
+    display: block;
+    margin-top: 15px;
+    color: #555;
+    font-weight: 500;
+}
+
+/* Input and Select Styles */
+input[type="number"],
+select,
+input[type="file"],
+#formatInfoInput,
+#versionInfoInput {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #d1d9e1;
+    border-radius: 6px;
+    font-size: 1em;
+    color: #333;
+    background-color: #fafbfc;
+    transition: box-shadow 0.2s ease;
+}
+
+input[type="number"]:focus,
+select:focus,
+input[type="file"]:focus,
+#formatInfoInput:focus,
+#versionInfoInput:focus {
+    outline: none;
+    box-shadow: 0px 0px 4px rgba(0, 120, 215, 0.5);
+}
+
+
+/* Button Styles */
+button {
+    margin-top: 20px;
+    padding: 12px 18px;
+    background-color: #0078d7;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 1em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+button:hover {
+    background-color: #005fa3;
+    box-shadow: 0px 5px 10px rgba(0, 120, 215, 0.2);
+}
+
+/* Specific Button Styles */
+#generateGrid {
+    background-color: #4CAF50;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#generateGrid.holding {
+    transition: none; /* Disable transition during hold for smoother animation */
+}
+
+#generateGrid:hover {
+    background-color: #388e3c;
+    box-shadow: 0px 5px 10px rgba(76, 175, 80, 0.2);
+}
+
+#resetButton {
+    margin-top: 20px;
+    padding: 12px 18px;
+    background-color: #f44336;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 1em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#resetButton.holding {
+    transition: none; /* Disable transition during hold for smoother animation */
+}
+
+#resetButton:hover {
+    background-color: #d32f2f;
+    box-shadow: 0px 5px 10px rgba(244, 67, 54, 0.2);
+}
+
+/* Toggle Label */
+.toggle-label {
+    display: flex;
+    align-items: center;
+    margin-top: 20px;
+    color: #555;
+    font-weight: 500;
+}
+
+.toggle-label input {
+    margin-right: 10px;
+}
+
+/* Canvas Styling */
+#qrCanvas {
+    max-width: 100%;
+    max-height: calc(100vh - 40px);
+    border: 1px solid #d1d9e1;
+    border-radius: 8px;
+    background-color: #ffffff;
+    box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+/* QR Code Data Textarea */
+#qrData {
+    width: 100%;
+    height: calc(100vh - 180px);
+    padding: 12px;
+    box-sizing: border-box;
+    resize: none;
+    border: 1px solid #d1d9e1;
+    border-radius: 6px;
+    background-color: #fafbfc;
+    font-size: 0.9em;
+    color: #333;
+    line-height: 1.6;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#qrData:focus {
+    border-color: #0078d7;
+    box-shadow: 0px 0px 4px rgba(0, 120, 215, 0.5);
+}
+
+/* QR Info Text */
+#qrInfo {
+    margin-bottom: 10px;
+    color: #555;
+    font-size: 0.9em;
+}
+
+/* Subtle Animation for Inputs */
+input[type="number"],
+select,
+input[type="file"],
+#formatInfoInput,
+#versionInfoInput {
+    transition: all 0.2s ease;
+}
+
+/* Grid Scale Slider */
+#gridScale {
+    width: 100%;
+    margin-top: 10px;
+    appearance: none;
+    height: 8px;
+    background: #d1d9e1;
+    border-radius: 4px;
+    outline: none;
+    transition: background 0.3s ease;
+}
+
+#gridScale::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background-color: #0078d7;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+#gridScale:focus {
+    background: #005fa3;
+}
+.notification {
+    position: fixed;
+    top: 10px; /* Small gap from the top */
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px); /* Initially above view */
+    width: 33.33%; /* One-third width */
+    max-width: 400px;
+    background-color: red;
+    color: white;
+    text-align: center;
+    padding: 10px;
+    font-weight: bold;
+    border-radius: 5px;
+    opacity: 0;
+    visibility: hidden; /* Initially hidden */
+    z-index: 1000;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.notification.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0); /* Slide down into view */
+    visibility: visible;
+}
+
+.notification.hide {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px); /* Slide back up */
+    visibility: hidden;
+    transition: opacity 0.4s ease, transform 0.4s ease, visibility 0s 0.4s; /* Delay visibility hide */
+}
+
+.dimension-text {  /* You might use this if you want specific styling for the numbers */
+    fill: blue;
+    font-size: 20px;
+}
+
+#qrCanvas {
+    border: 1px solid #000;
+}

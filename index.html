@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manual QR Code Maker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="notification" class="notification hidden">This is a static element. Enable static editing to modify.</div>
+    <div class="container">
+        <!-- Left Panel -->
+        <div class="left-panel">
+            <h2>QR Code Settings</h2>
+            <label for="version">Version (1-40):</label>
+            <input type="number" id="version" min="1" max="40" value="1">
+
+            <label for="errorCorrection">Error Correction Level:</label>
+            <select id="errorCorrection">
+                <option value="L">L (7%)</option>
+                <option value="M">M (15%)</option>
+                <option value="Q">Q (25%)</option>
+                <option value="H">H (30%)</option>
+            </select>
+
+            <label for="maskPattern">Mask Pattern:</label>
+            <select id="maskPattern">
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+            </select>
+
+            <button id="generateGrid">Generate Grid</button>
+            <button id="resetButton">Reset</button>
+            <label for="staticToggle" class="toggle-label">
+                <input type="checkbox" id="staticToggle">
+                Enable Static Elements Editing
+            </label>
+            <label for="formatInfoInput">Format Information (15 bits):</label>
+            <input type="text" id="formatInfoInput" maxlength="15">
+            <div id="formatInfoExplanation"></div>
+
+            <label for="versionInfoInput">Version Information (18 bits - for versions 7 and above):</label>
+            <input type="text" id="versionInfoInput" value="000111110010010100" maxlength="18">
+
+            <button id="readOrderBtn">Show Read Order</button>
+            <button id="dimensionsBtn">Show Dimensions</button>
+
+            <div id="versionInfoExplanation"></div>
+        </div>
+        <!-- Center Panel -->
+        <div class="center-panel">
+            <canvas id="qrCanvas"></canvas>
+        </div>
+        <!-- Right Panel -->
+        <div class="right-panel">
+            <h2>QR Code Data</h2>
+            <div id="qrInfo"></div>
+            <textarea id="qrData" readonly></textarea>
+        </div>
+    </div>
+    <script src="constants.js" defer></script>
+    <script src="main.js" defer></script>
+    <script src="other.js"></script>
+</body>
+</html>
