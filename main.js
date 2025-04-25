@@ -65,19 +65,30 @@ const initGrid = () => {
     cfg.ver = +els.version.value;
     cfg.errLevel = els.errCorr.value;
     cfg.size = 17 + 4 * cfg.ver;
-    if (cfg.size === lastSize) return;
-    lastSize = cfg.size;
-    initArrays();
+    // Reset lastSize if version actually changes grid size
+    if (17 + 4 * cfg.ver !== lastSize) {
+         lastSize = 17 + 4 * cfg.ver;
+    } else if (cfg.ver === 1 && lastSize === 0) { // Handle initial load case
+         lastSize = 21;
+    } else {
+        // If only ECC/Mask changed, don't re-initialize grid/reserved fully,
+        // just update format/version info and redraw.
+        // However, for simplicity now, we *will* re-init. If performance becomes an issue, optimize this.
+         lastSize = cfg.size; // Update size anyway
+    }
+
+    initArrays(); // Initialize grid and reserved arrays
     patterns.finder(0, 0); patterns.finder(cfg.size - 7, 0); patterns.finder(0, cfg.size - 7);
     patterns.timing();
     if (cfg.ver >= 2)
         getAlignPos(cfg.ver).forEach(y => getAlignPos(cfg.ver).forEach(x => (x !== 6 || (y !== 6 && y !== cfg.size - 7 && x !== cfg.size - 7)) && patterns.alignment(x - 2, y - 2)));
-    setModule(8, 4 * cfg.ver + 9, true, true);
-    patterns.format();
-    patterns.version();
+    setModule(8, 4 * cfg.ver + 9, true, true); // Dark module
+    updateFormatInfo(); // Call this *before* patterns.format() to ensure els.formatInfo has the value
+    patterns.format();  // Apply format info based on current selection/input
+    patterns.version(); // Apply version info if needed
     drawGrid();
-    interpretData();
-    updateFormatInfoDisplay();
+    interpretData();    // Interpret the initial grid state
+    updateFormatInfoDisplay(); // Update the explanation display
 };
 
 const updateFormatInfo = () => {
@@ -120,121 +131,223 @@ const showNotification = message => {
 const checkFormatInfoValid = () => Object.values(formatInformationStrings).includes(els.formatInfo.value);
 const checkVersionInfoCorrect = () => cfg.ver < 7 || versionInformationStrings[cfg.ver] === els.versionInfo.value;
 
+const countAvailableDataCells = () => {
+    let count = 0;
+    for (let y = 0; y < cfg.size; y++) {
+        for (let x = 0; x < cfg.size; x++) {
+            if (!reserved[y][x]) {
+                count++;
+            }
+        }
+    }
+    return count;
+};
+
 
 function getDataBitsInReadingOrder() {
     const dataBits = [];
-    // Start from bottom-right
     let x = cfg.size - 1;
     let y = cfg.size - 1;
-    let goingUp = true; // first “leg” goes upward
+    let goingUp = true;
 
-    while (true) {
-        // For each 'leg', handle two adjacent columns: (x) and (x-1)
+    while (x >= 0) { // Main loop condition based on x column index
+        // Process the two columns (right one first)
         for (let i = 0; i < 2; i++) {
-            let col = x - i;
-            // Skip the timing column
-            if (col === 6) {
-                col--;
-            }
-            // If we've gone off the left edge, we’re done
-            if (col < 0) break;
+            let currentX = x - i;
 
-            // Collect a bit if this cell is not reserved (function pattern)
-            if (!reserved[y][col]) {
-                dataBits.push(grid[y][col].isBlack ? '1' : '0');
+            // Skip vertical timing pattern column
+            if (currentX === 6) continue;
+
+            // Check if column is valid before processing rows
+            if (currentX < 0) continue;
+
+            const scanYStart = goingUp ? cfg.size - 1 : 0;
+            const scanYEnd = goingUp ? -1 : cfg.size;
+            const stepY = goingUp ? -1 : 1;
+
+            for (let currentY = scanYStart; currentY !== scanYEnd; currentY += stepY) {
+                // Check if the module is reserved
+                if (!reserved[currentY][currentX]) {
+                    dataBits.push(grid[currentY][currentX].isBlack ? '1' : '0');
+                }
             }
         }
 
-        // Move our “scan head” up or down by one row
-        if (goingUp) {
-            y--;
-            // If we pass the top, move two columns left, flip direction
-            if (y < 0) {
-                x -= 2;
-                y = 0;
-                goingUp = false;
-                // If we’ve gone off the left edge, we’re done
-                if (x < 0) break;
-            }
-        } else {
-            // Going downward
-            y++;
-            // If we pass the bottom, move two columns left, flip direction
-            if (y >= cfg.size) {
-                x -= 2;
-                y = cfg.size - 1;
-                goingUp = true;
-                if (x < 0) break;
-            }
-        }
+        // Move to the next pair of columns
+        x -= 2;
+
+        // Switch direction
+        goingUp = !goingUp;
     }
-
     return dataBits.join('');
 }
 
+const writeBitsToGrid = (bits) => {
+    let bitIndex = 0;
+    let x = cfg.size - 1;
+    let y = cfg.size - 1;
+    let goingUp = true;
 
-
-const interpretData = () => {
-    // 1. Get all data bits in the correct read order:
-    const bits = getDataBitsInReadingOrder();
-
-    // 2. Parse the first 4 bits as the Mode
-    const modeBits = bits.slice(0, 4);
-    let modeString = '';
-    switch (modeBits) {
-        case '0001': modeString = 'Numeric'; break;
-        case '0010': modeString = 'Alphanumeric'; break;
-        case '0100': modeString = 'Byte'; break;
-        case '0111': modeString = 'ECI'; break;
-        case '1000': modeString = 'Kanji'; break;
-        default:     modeString = 'Unknown'; 
+    // Clear existing data bits first (optional, but good for clarity)
+    for (let cy = 0; cy < cfg.size; cy++) {
+        for (let cx = 0; cx < cfg.size; cx++) {
+            if (!reserved[cy][cx]) {
+                grid[cy][cx].isBlack = false; // Set non-reserved to white initially
+            }
+        }
     }
 
-    // 3. Parse the next 8 bits as the Length
-    const lengthBits = bits.slice(4, 12);
-    const lengthDecimal = parseInt(lengthBits, 2);
+    // Now write the new bits
+    x = cfg.size - 1; // Reset x for writing
+    while (x >= 0) {
+        for (let i = 0; i < 2; i++) {
+            let currentX = x - i;
 
-    // 4. The rest are “data” bits (for ASCII, hex, etc.)
-    const dataBits = bits.slice(12);
+            if (currentX === 6) continue; // Skip timing column
+            if (currentX < 0) continue;
 
-    // Convert dataBits -> ASCII
-    const ascii = dataBits.match(/.{8}/g)?.map(byte => 
-        String.fromCharCode(parseInt(byte, 2))
-    ).join('') || '';
+            const scanYStart = goingUp ? cfg.size - 1 : 0;
+            const scanYEnd = goingUp ? -1 : cfg.size;
+            const stepY = goingUp ? -1 : 1;
 
-    // Convert dataBits -> Hex
-    const hex = dataBits.match(/.{8}/g)?.map(byte =>
-        parseInt(byte, 2).toString(16).padStart(2, '0')
-    ).join(' ') || '';
+            for (let currentY = scanYStart; currentY !== scanYEnd; currentY += stepY) {
+                if (!reserved[currentY][currentX]) {
+                    if (bitIndex < bits.length) {
+                        const isBlack = bits[bitIndex] === '1';
+                        // Use setModule carefully if needed, but direct grid access is fine here
+                        // as we are *only* touching non-reserved cells.
+                        grid[currentY][currentX].isBlack = isBlack;
+                        bitIndex++;
+                    } else {
+                        // If we run out of bits, leave remaining data cells as white (already cleared)
+                        // grid[currentY][currentX].isBlack = false; // Explicitly set to white
+                    }
+                }
+            }
+        }
+        x -= 2;
+        goingUp = !goingUp;
+    }
 
-    // Stats and checks as you had before:
+    if (bitIndex < bits.length) {
+        console.warn(`Provided ${bits.length} bits, but only ${bitIndex} could be placed.`);
+        showNotification(`Warning: Too many bits provided. Only ${bitIndex} were placed.`);
+    }
+};
+
+const interpretData = () => {
+    const bits = getDataBitsInReadingOrder();
+    const maxDataBits = countAvailableDataCells(); // Get max capacity
+
+    // Basic parsing (can be made more robust)
+    let modeBits = bits.substring(0, 4);
+    let modeString = 'Unknown';
+    let lengthBits = '';
+    let lengthDecimal = 0;
+    let dataBits = '';
+    let ascii = '';
+    let hex = '';
+
+    if (bits.length >= 4) {
+        switch (modeBits) {
+            case '0001': modeString = 'Numeric'; break;
+            case '0010': modeString = 'Alphanumeric'; break;
+            case '0100': modeString = 'Byte'; break;
+            case '0111': modeString = 'ECI'; break; // Note: ECI handling is complex
+            case '1000': modeString = 'Kanji'; break; // Note: Kanji handling is complex
+            // Add other modes if necessary (FNC1 etc.)
+            default: modeString = `Invalid/Unknown (${modeBits})`;
+        }
+    } else {
+         modeString = 'Not enough bits for mode';
+    }
+
+    // WARNING: Length indicator size VARIES GREATLY by mode and version!
+    // This simple 8-bit assumption is ONLY correct for Byte mode in versions 1-9.
+    // A full implementation needs QR code capacity tables.
+    // For this *manual* tool, we'll just show the next 8 bits as *potential* length.
+    if (bits.length >= 12) {
+        lengthBits = bits.substring(4, 12);
+        lengthDecimal = parseInt(lengthBits, 2);
+        dataBits = bits.substring(12);
+
+        // Try to interpret dataBits as ASCII/Hex (best effort)
+        try {
+            ascii = dataBits.match(/.{1,8}/g)?.map(byte => {
+                // Pad if less than 8 bits for the last byte
+                const paddedByte = byte.padEnd(8, '0');
+                 // Only convert valid ASCII range (e.g., 32-126 printable) or show placeholder
+                 const charCode = parseInt(paddedByte, 2);
+                 return (charCode >= 32 && charCode <= 126) ? String.fromCharCode(charCode) : `·`; // Use middot for non-printable
+            }).join('') || '';
+
+            hex = dataBits.match(/.{1,8}/g)?.map(byte => {
+                 const paddedByte = byte.padEnd(8, '0');
+                 return parseInt(paddedByte, 2).toString(16).toUpperCase().padStart(2, '0');
+            }).join(' ') || '';
+        } catch (e) {
+            console.error("Error interpreting data bits:", e);
+            ascii = "[Error interpreting data]";
+            hex = "[Error interpreting data]";
+        }
+
+    } else if (bits.length >= 4) {
+        lengthBits = bits.substring(4);
+        lengthDecimal = NaN; // Not enough bits for full length
+        dataBits = '';
+        ascii = '';
+        hex = '';
+    }
+
+
     const darkModuleCount = grid.flat().filter(cell => cell.isBlack).length;
     const darkModulePercentage = (darkModuleCount / (cfg.size * cfg.size)) * 100;
     const timingCorrect = Array(cfg.size - 16).fill().every((_, i) => {
-        const idx = i + 8, expected = idx % 2 === 0;
-        return grid[6][idx].isBlack === expected && grid[idx][6].isBlack === expected;
+        const idx = i + 8;
+        // Check bounds before accessing grid - crucial for small versions
+        if (idx < 0 || idx >= cfg.size) return true; // Should not happen with loop bounds, but safe
+        const expected = idx % 2 === 0;
+        // Check if timing pattern cells exist before accessing
+        const rowTimingOk = grid[6] && grid[6][idx] ? grid[6][idx].isBlack === expected : false;
+        const colTimingOk = grid[idx] && grid[idx][6] ? grid[idx][6].isBlack === expected : false;
+        // For timing pattern to be correct, both horizontal and vertical must be correct IF they exist
+        return grid[6] && grid[idx] ? (rowTimingOk && colTimingOk) : false; // Simplified: if either row/col index is invalid, pattern is incorrect
     });
 
-    // 5. Update the info panel
     els.info.innerHTML = `
-        <p><strong>Encoding Mode:</strong> ${modeString} <em>[${modeBits}]</em></p>
-        <p><strong>Data Length (decimal):</strong> ${lengthDecimal} <em>[${lengthBits}]</em></p>
-        <p><strong>Data Length (bits total after Mode+Length):</strong> ${dataBits.length}</p>
+        <p><strong>Grid Size:</strong> ${cfg.size}x${cfg.size}</p>
+        <p><strong>Data Capacity (bits):</strong> ${maxDataBits}</p>
+        <p><strong>Current Data Bits:</strong> ${bits.length}</p>
+        <hr>
+        <p><strong>Encoding Mode (Guess):</strong> ${modeString} <em>[${modeBits}]</em></p>
+        <p><strong>Length Indicator (Guess):</strong> ${lengthDecimal} <em>[${lengthBits}]</em></p>
+        <hr>
         <p><strong>Timing Pattern Correct:</strong> ${timingCorrect ? 'Yes' : 'No'}</p>
         <p><strong>Format Info Valid:</strong> ${checkFormatInfoValid() ? 'Yes' : 'No'}</p>
         <p><strong>Version Info Correct:</strong> ${checkVersionInfoCorrect() ? 'Yes' : 'No'}</p>
-        <p><strong>Dark Module Percentage:</strong> ${darkModulePercentage.toFixed(2)}%</p>
-        <p><strong>Dark Module Count:</strong> ${darkModuleCount}</p>
+        <p><strong>Dark Module Percentage:</strong> ${darkModulePercentage.toFixed(2)}% (${darkModuleCount})</p>
     `;
-    
     // 6. Show the extracted bits in the textarea
-    els.data.value = 
-        `All Bits (in read order):\n${bits}\n\n` +
-        `Mode Bits (first 4): ${modeBits} => ${modeString}\n` +
-        `Length Bits (next 8): ${lengthBits} => ${lengthDecimal}\n\n` +
-        `Payload Bits:\n${dataBits}\n\n` +
-        `ASCII Interpretation:\n${ascii}\n\n` +
-        `Hex Interpretation:\n${hex}`;
+    els.data.value =
+`--- EDIT THE 'All Bits' LINE BELOW ---
+(Changes update the grid's data area)
+(Max ${maxDataBits} bits for this configuration)
+
+All Bits (in read order):
+${bits}
+
+--- Parsed Data (Read Only) ---
+Mode Bits (first 4): ${modeBits} => ${modeString}
+Length Bits (next 8, *approx*): ${lengthBits} => ${lengthDecimal}
+
+Payload Bits:
+${dataBits}
+
+ASCII Interpretation (best effort):
+${ascii}
+
+Hex Interpretation (best effort):
+${hex}`;
 };
 
 
@@ -445,6 +558,7 @@ const drawDimensions = () => {
         ctx.fillText(x, x * cfg.cell + cfg.cell / 2, cfg.cell / 2);
     }
 };
+
 els.canvas.addEventListener('click', e => {
     const rect = els.canvas.getBoundingClientRect(), x = Math.floor((e.clientX - rect.left) * (els.canvas.width / rect.width) / cfg.cell),
         y = Math.floor((e.clientY - rect.top) * (els.canvas.height / rect.height) / cfg.cell);
@@ -460,20 +574,81 @@ els.canvas.addEventListener('click', e => {
     }
 });
 
+els.data.addEventListener('input', () => {
+    const content = els.data.value;
+    const lines = content.split('\n');
+    let bitsLineIndex = -1;
+    for(let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith('All Bits (in read order):')) {
+            bitsLineIndex = i + 1; // The bits are expected on the next line
+            break;
+        }
+    }
+
+    if (bitsLineIndex !== -1 && bitsLineIndex < lines.length) {
+        const bitsString = lines[bitsLineIndex].trim().replace(/\s/g, ''); // Remove spaces
+
+        // Validate: only 0s and 1s
+        if (!/^[01]*$/.test(bitsString)) {
+            showNotification('Invalid characters in "All Bits". Only 0 and 1 allowed.');
+            // Optional: revert textarea? For now, just notify.
+            return;
+        }
+
+        const maxDataBits = countAvailableDataCells();
+        if (bitsString.length > maxDataBits) {
+            showNotification(`Error: Input exceeds max data bits (${maxDataBits}). Truncating is not automatic.`);
+            // Optional: Truncate bitsString = bitsString.substring(0, maxDataBits);
+            // For now, we prevent the update if too long.
+             return;
+        }
+
+        // If valid and within limits, update the grid
+        writeBitsToGrid(bitsString);
+        drawGrid(); // Redraw the grid with the new bits
+        interpretData(); // Re-interpret the *new* grid state and update info/textarea sections
+
+    } else {
+        // Could not find the line - maybe user deleted it?
+        showNotification('Could not find "All Bits" line to parse. Structure is incorrect.');
+    }
+});
+
 els.genBtn.addEventListener('click', initGrid);
 els.static.addEventListener('change', () => cfg.editStatic = els.static.checked);
-els.formatInfo.addEventListener('input', () => { patterns.format(); updateFormatInfoDisplay(); drawGrid(); });
-els.versionInfo.addEventListener('input', () => { patterns.version(); drawGrid(); });
-els.errCorr.addEventListener('change', updateFormatInfo);
-els.maskPattern.addEventListener('change', updateFormatInfo);
+els.formatInfo.addEventListener('input', () => {
+    patterns.format();
+    updateFormatInfoDisplay();
+    drawGrid();
+    interpretData(); // Re-interpret after format change
+});
+els.versionInfo.addEventListener('input', () => {
+    patterns.version();
+    drawGrid();
+    interpretData(); // Re-interpret after version info change
+});
+els.errCorr.addEventListener('change', () => {
+    // Changing ECC/Mask requires re-calculating Format Info
+    updateFormatInfo();
+    // Format info change might change reserved bits, so re-interpret
+    interpretData();
+});
+els.maskPattern.addEventListener('change', () => {
+    // Changing ECC/Mask requires re-calculating Format Info
+    updateFormatInfo();
+    // Format info change might change reserved bits, so re-interpret
+    interpretData();
+});
 els.readOrderBtn.addEventListener('click', () => {
     cfg.showReadOrder = !cfg.showReadOrder;
     els.readOrderBtn.textContent = cfg.showReadOrder ? 'Hide Read Order' : 'Show Read Order';
-    drawGrid();
+    drawGrid(); // Just redraw, no data change
 });
 els.dimensionsBtn.addEventListener('click', () => {
     cfg.showDimensions = !cfg.showDimensions;
     els.dimensionsBtn.textContent = cfg.showDimensions ? 'Hide Dimensions' : 'Show Dimensions';
-    drawGrid();
+    drawGrid(); // Just redraw, no data change
 });
+
+// Initial setup
 initGrid();

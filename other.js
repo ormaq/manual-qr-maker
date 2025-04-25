@@ -1,3 +1,4 @@
+// other.js
 // Reset Button Logic
 const resetButton = document.getElementById('resetButton');
 let resetTimeout; // Timer for reset
@@ -38,19 +39,25 @@ function triggerReset() {
     document.getElementById('errorCorrection').value = 'L';
     document.getElementById('maskPattern').value = '0';
     document.getElementById('staticToggle').checked = false;
-    document.getElementById('formatInfoInput').value = '';
+    document.getElementById('formatInfoInput').value = ''; // Clear this
+    // Re-set version info to default for version 7+ only if applicable
+    // Keep the default V7 string in the input for now, initGrid handles V<7
     document.getElementById('versionInfoInput').value = '000111110010010100';
+    // Clear the data textarea
     document.getElementById('qrData').value = '';
 
-    // Clearing the canvas (optional)
-    const canvas = document.getElementById('qrCanvas');
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // --- ADD THIS ---
+    // Re-initialize the grid and update displays based on defaults
+    initGrid();
+    // --- END ADD ---
+
+    // Optional: Clear canvas explicitly (though initGrid redraws)
+    // const canvas = document.getElementById('qrCanvas');
+    // const ctx = canvas.getContext('2d');
+    // ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 // Event listeners for holding down and releasing the reset button
 resetButton.addEventListener('mousedown', startHold);
 resetButton.addEventListener('mouseup', cancelHold);
 resetButton.addEventListener('mouseleave', cancelHold);
-
-
