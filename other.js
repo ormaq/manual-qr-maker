@@ -46,15 +46,8 @@ function triggerReset() {
     // Clear the data textarea
     document.getElementById('qrData').value = '';
 
-    // --- ADD THIS ---
-    // Re-initialize the grid and update displays based on defaults
-    initGrid();
-    // --- END ADD ---
 
-    // Optional: Clear canvas explicitly (though initGrid redraws)
-    // const canvas = document.getElementById('qrCanvas');
-    // const ctx = canvas.getContext('2d');
-    // ctx.clearRect(0, 0, canvas.width, canvas.height);
+    initGrid();
 }
 
 // Event listeners for holding down and releasing the reset button

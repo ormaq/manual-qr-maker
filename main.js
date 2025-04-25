@@ -143,7 +143,6 @@ const countAvailableDataCells = () => {
     return count;
 };
 
-
 function getDataBitsInReadingOrder() {
     const dataBits = [];
     let x = cfg.size - 1;
@@ -350,8 +349,6 @@ Hex Interpretation (best effort):
 ${hex}`;
 };
 
-
-
 const updateFormatInfoDisplay = () => {
     const formatString = els.formatInfo.value || '101010000010010', maskPattern = formatString.substring(2, 5),
         maskPatternExplanation = maskPatterns[maskPattern] || 'Unknown';
@@ -398,7 +395,7 @@ const drawReadOrder = () => {
             { dx: 0, dy: -1 }, // Top
             { dx: 1, dy: 0 },  // Right
             { dx: 0, dy: 1 },  // Bottom
-            { dx: -1, dy: 0 } // Left
+            { dx: -1, dy: 0 }  // Left
         ];
 
         neighbors.forEach(n => {
@@ -431,11 +428,8 @@ const drawReadOrder = () => {
                     }
                     ctx.stroke();                       
                }
-
             }
         });
-
-
     };
 
     const isValidDataPosition = (x, y) => {
@@ -650,5 +644,4 @@ els.dimensionsBtn.addEventListener('click', () => {
     drawGrid(); // Just redraw, no data change
 });
 
-// Initial setup
 initGrid();
