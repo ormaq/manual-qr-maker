@@ -254,7 +254,7 @@ const interpretData = () => {
             case '0100': modeString = 'Byte'; break;
             case '0111': modeString = 'ECI'; break; // Note: ECI handling is complex
             case '1000': modeString = 'Kanji'; break; // Note: Kanji handling is complex
-            // Add other modes if necessary (FNC1 etc.)
+            
             default: modeString = `Invalid/Unknown (${modeBits})`;
         }
     } else {

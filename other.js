@@ -8,7 +8,7 @@ const holdThreshold = 5000; // 5 seconds in milliseconds
 // Function to initiate the reset process
 function startHold() {
     holdDuration = 0; // Reset hold duration
-    resetButton.classList.add('holding'); // Add holding class for animation
+    resetButton.classList.add('holding'); 
     resetTimeout = setInterval(() => {
         holdDuration += 100; // Increase hold duration by 100ms
         const progress = Math.min(holdDuration / holdThreshold, 1); // Calculate progress as a percentage (max 1)
