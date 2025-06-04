@@ -60,7 +60,24 @@
         <div class="right-panel">
             <h2>QR Code Data</h2>
             <div id="qrInfo"></div>
-            <textarea id="qrData"></textarea>
+
+            <label for="allBitsInput">All Bits:</label>
+            <textarea id="allBitsInput"></textarea>
+
+            <label for="modeBitsInput">Mode Bits (4 bits):</label>
+            <input type="text" id="modeBitsInput" maxlength="4">
+
+            <label for="lengthBitsInput">Length Bits (8 bits):</label>
+            <input type="text" id="lengthBitsInput" maxlength="8">
+
+            <label for="payloadBitsInput">Payload Bits:</label>
+            <textarea id="payloadBitsInput"></textarea>
+
+            <label for="asciiInput">ASCII:</label>
+            <textarea id="asciiInput"></textarea>
+
+            <label for="hexInput">Hex:</label>
+            <textarea id="hexInput"></textarea>
         </div>
     </div>
     <script src="constants.js" defer></script>

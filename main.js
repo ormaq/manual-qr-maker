@@ -326,27 +326,18 @@ const interpretData = () => {
         <p><strong>Version Info Correct:</strong> ${checkVersionInfoCorrect() ? 'Yes' : 'No'}</p>
         <p><strong>Dark Module Percentage:</strong> ${darkModulePercentage.toFixed(2)}% (${darkModuleCount})</p>
     `;
-    // 6. Show the extracted bits in the textarea
-    els.data.value =
-`--- EDIT THE 'All Bits' LINE BELOW ---
-(Changes update the grid's data area)
-(Max ${maxDataBits} bits for this configuration)
+    // Populate editable fields with the extracted data
+    els.allBits.maxLength = maxDataBits;
+    els.payloadBits.maxLength = Math.max(maxDataBits - 12, 0);
+    els.ascii.maxLength = Math.floor(Math.max(maxDataBits - 12, 0) / 8);
+    els.hex.maxLength = Math.ceil(Math.max(maxDataBits - 12, 0) / 4);
 
-All Bits (in read order):
-${bits}
-
---- Parsed Data (Read Only) ---
-Mode Bits (first 4): ${modeBits} => ${modeString}
-Length Bits (next 8, *approx*): ${lengthBits} => ${lengthDecimal}
-
-Payload Bits:
-${dataBits}
-
-ASCII Interpretation (best effort):
-${ascii}
-
-Hex Interpretation (best effort):
-${hex}`;
+    els.allBits.value = bits;
+    els.modeBits.value = modeBits;
+    els.lengthBits.value = lengthBits;
+    els.payloadBits.value = dataBits;
+    els.ascii.value = ascii;
+    els.hex.value = hex;
 };
 
 const updateFormatInfoDisplay = () => {
@@ -568,45 +559,46 @@ els.canvas.addEventListener('click', e => {
     }
 });
 
-els.data.addEventListener('input', () => {
-    const content = els.data.value;
-    const lines = content.split('\n');
-    let bitsLineIndex = -1;
-    for(let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith('All Bits (in read order):')) {
-            bitsLineIndex = i + 1; // The bits are expected on the next line
-            break;
-        }
-    }
+const bitsFromAscii = str => Array.from(str).map(c => c.charCodeAt(0).toString(2).padStart(8,'0')).join('');
+const bitsFromHex = str => {
+    const clean = str.replace(/[^0-9a-fA-F]/g, '');
+    if (clean.length % 2 !== 0) return null;
+    return clean.match(/.{2}/g)?.map(h => parseInt(h,16).toString(2).padStart(8,'0')).join('') || '';
+};
 
-    if (bitsLineIndex !== -1 && bitsLineIndex < lines.length) {
-        const bitsString = lines[bitsLineIndex].trim().replace(/\s/g, ''); // Remove spaces
+const applyBits = bits => {
+    const maxBits = countAvailableDataCells();
+    if (!/^[01]*$/.test(bits)) { showNotification('Invalid characters in bits'); return; }
+    if (bits.length > maxBits) { showNotification(`Error: Input exceeds max data bits (${maxBits})`); return; }
+    writeBitsToGrid(bits);
+    drawGrid();
+    interpretData();
+};
 
-        // Validate: only 0s and 1s
-        if (!/^[01]*$/.test(bitsString)) {
-            showNotification('Invalid characters in "All Bits". Only 0 and 1 allowed.');
-            // Optional: revert textarea? For now, just notify.
-            return;
-        }
+const gatherBitFields = () => (els.modeBits.value || '') + (els.lengthBits.value || '') + (els.payloadBits.value || '');
 
-        const maxDataBits = countAvailableDataCells();
-        if (bitsString.length > maxDataBits) {
-            showNotification(`Error: Input exceeds max data bits (${maxDataBits}). Truncating is not automatic.`);
-            // Optional: Truncate bitsString = bitsString.substring(0, maxDataBits);
-            // For now, we prevent the update if too long.
-             return;
-        }
-
-        // If valid and within limits, update the grid
-        writeBitsToGrid(bitsString);
-        drawGrid(); // Redraw the grid with the new bits
-        interpretData(); // Re-interpret the *new* grid state and update info/textarea sections
-
-    } else {
-        // Could not find the line - maybe user deleted it?
-        showNotification('Could not find "All Bits" line to parse. Structure is incorrect.');
-    }
+els.allBits.addEventListener('input', () => {
+    applyBits(els.allBits.value.replace(/\s/g,''));
 });
+
+[els.modeBits, els.lengthBits, els.payloadBits].forEach(el => {
+    el.addEventListener('input', () => {
+        applyBits(gatherBitFields());
+    });
+});
+
+els.ascii.addEventListener('input', () => {
+    const bits = (els.modeBits.value || '') + (els.lengthBits.value || '') + bitsFromAscii(els.ascii.value);
+    applyBits(bits);
+});
+
+els.hex.addEventListener('input', () => {
+    const payload = bitsFromHex(els.hex.value);
+    if (payload === null) { showNotification('Hex length must be even'); return; }
+    const bits = (els.modeBits.value || '') + (els.lengthBits.value || '') + payload;
+    applyBits(bits);
+});
+
 
 els.genBtn.addEventListener('click', initGrid);
 els.static.addEventListener('change', () => cfg.editStatic = els.static.checked);
